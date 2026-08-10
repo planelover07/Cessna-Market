@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en" data-palette="#2a78d6">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Piper Cherokee — All-In Purchase Cost by State</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1: #fcfcfb;
+    --page: #f9f9f7;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --baseline: #c3c2b7;
+    --series-1: #2a78d6;
+    --series-dim: #cde2fb;
+    --border: rgba(11,11,11,0.10);
+    --good: #0ca30c;
+    --critical: #d03b3b;
+    --warning: #fab219;
+    --field: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1: #1a1a19;
+      --page: #0d0d0d;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted: #898781;
+      --grid: #2c2c2a;
+      --baseline: #383835;
+      --series-1: #3987e5;
+      --series-dim: #184f95;
+      --border: rgba(255,255,255,0.10);
+      --good: #0ca30c;
+      --critical: #d03b3b;
+      --field: #232322;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --page: #0d0d0d;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --baseline: #383835;
+    --series-1: #3987e5;
+    --series-dim: #184f95;
+    --border: rgba(255,255,255,0.10);
+    --field: #232322;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  header { margin-bottom: 28px; }
+  h1 { font-size: 27px; line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.02em; padding-right: 84px; }
+  .sub { color: var(--text-secondary); font-size: 14.5px; margin: 0; max-width: 62ch; }
+
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 18px;
+  }
+  .card h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--muted); margin: 0 0 16px; font-weight: 600;
+  }
+
+  /* controls */
+  .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px,1fr)); gap: 16px; }
+  label.f { display: block; }
+  label.f > span {
+    display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary);
+    margin-bottom: 6px; letter-spacing: 0.01em;
+  }
+  select, input[type=number] {
+    width: 100%; padding: 9px 11px; font: inherit; font-size: 14px;
+    color: var(--text-primary); background: var(--field);
+    border: 1px solid var(--baseline); border-radius: 8px;
+  }
+  select:focus-visible, input:focus-visible { outline: 2px solid var(--series-1); outline-offset: 1px; }
+  input[type=range] { width: 100%; accent-color: var(--series-1); margin-top: 8px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 5px; }
+
+  /* hero */
+  .hero-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 18px; }
+  .tile { }
+  .tile .lbl { font-size: 12px; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.01em; }
+  .tile .val { font-size: 38px; font-weight: 650; letter-spacing: -0.03em; line-height: 1.1; margin-top: 2px; }
+  .tile .val.sm { font-size: 26px; }
+  .tile .note { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+
+  /* breakdown */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em;
+       color: var(--muted); font-weight: 600; padding: 0 0 8px; border-bottom: 1px solid var(--grid); }
+  th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td { padding: 9px 0; border-bottom: 1px solid var(--grid); vertical-align: top; }
+  td .desc { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  tr.total td { border-bottom: none; border-top: 2px solid var(--baseline); font-weight: 650; font-size: 16px; padding-top: 12px; }
+  tr.zero td:first-child { color: var(--text-secondary); }
+
+  /* chart */
+  .bars { display: flex; flex-direction: column; gap: 3px; }
+  .bar-row {
+    display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 10px;
+    padding: 3px 4px; border-radius: 6px; cursor: pointer; border: 1px solid transparent;
+  }
+  .bar-row:hover { background: color-mix(in srgb, var(--series-1) 8%, transparent); }
+  .bar-row.sel { border-color: var(--series-1); background: color-mix(in srgb, var(--series-1) 10%, transparent); }
+  .bar-row .st { font-size: 13px; font-weight: 600; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .bar-track { height: 16px; position: relative; }
+  .bar-fill {
+    height: 16px; background: var(--series-dim); border-radius: 0 4px 4px 0;
+    transition: width .25s ease;
+  }
+  .bar-row.sel .bar-fill { background: var(--series-1); }
+  .bar-val { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--text-secondary); min-width: 168px; text-align: right; }
+  .bar-sub { color: var(--muted); font-size: 12px; font-weight: 400; margin-left: 9px; }
+  .bar-row.sel .bar-val { color: var(--text-primary); font-weight: 650; }
+
+  /* state detail */
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 14px; margin-bottom: 18px; }
+  .fact { }
+  .fact .k { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; }
+  .fact .v { font-size: 15px; font-weight: 600; margin-top: 3px; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600;
+          padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border); }
+  .pill.y { color: var(--good); }
+  .pill.n { color: var(--critical); }
+  .pill.p { color: var(--text-secondary); }
+  ul.gotchas { margin: 0; padding-left: 18px; }
+  ul.gotchas li { margin-bottom: 8px; font-size: 14px; color: var(--text-secondary); }
+  ul.gotchas li strong { color: var(--text-primary); font-weight: 600; }
+
+  .callout {
+    border-left: 3px solid var(--series-1); padding: 2px 0 2px 14px;
+    font-size: 14px; color: var(--text-secondary); margin: 16px 0 0;
+  }
+  .callout strong { color: var(--text-primary); }
+
+  footer { font-size: 12.5px; color: var(--muted); line-height: 1.6; margin-top: 26px; }
+  footer a { color: var(--text-secondary); }
+  .toggle {
+    position: fixed; top: 14px; right: 14px; font: inherit; font-size: 12px; font-weight: 600;
+    background: var(--surface-1); color: var(--text-secondary); border: 1px solid var(--border);
+    border-radius: 999px; padding: 6px 13px; cursor: pointer; z-index: 10;
+    backdrop-filter: blur(8px); box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+  }
+  @media (max-width: 640px) {
+    h1 { font-size: 22px; }
+    .tile .val { font-size: 31px; }
+    .bar-row { grid-template-columns: 34px 1fr; }
+    .bar-val { grid-column: 2; text-align: left; min-width: 0; }
+  }
+</style>
+</head>
+<body>
+<button class="toggle" id="themeBtn">Dark</button>
+<div class="wrap">
+
+<header>
+  <h1>What you actually bring to the table</h1>
+  <p class="sub">All-in cost of buying a used Piper Cherokee, by the state where you'll hangar it. The tax that matters is the one in your <em>basing</em> state, not where the plane sits today — most states have a fly-away exemption on the seller's side.</p>
+</header>
+
+<div class="card">
+  <h2>Your deal</h2>
+  <div class="controls">
+    <label class="f">
+      <span>Purchase price</span>
+      <input type="number" id="price" value="85000" min="20000" max="250000" step="1000">
+      <input type="range" id="priceR" value="85000" min="40000" max="150000" step="1000">
+    </label>
+    <label class="f">
+      <span>Hangar state</span>
+      <select id="state"></select>
+      <div class="hint" id="stateHint"></div>
+    </label>
+    <label class="f">
+      <span>Seller</span>
+      <select id="seller">
+        <option value="private">Private individual</option>
+        <option value="dealer">Dealer / broker / LLC</option>
+      </select>
+      <div class="hint">Worth up to $7k in some states.</div>
+    </label>
+    <label class="f">
+      <span>Pre-buy depth</span>
+      <select id="prebuy">
+        <option value="1500">Basic — visual, no panels</option>
+        <option value="3000" selected>Standard — panels + compressions</option>
+        <option value="5500">Comprehensive — annual-level</option>
+      </select>
+    </label>
+    <label class="f">
+      <span>Your insurance profile</span>
+      <select id="ins">
+        <option value="3400">Low time, no instrument rating</option>
+        <option value="2100" selected>~300 hr, instrument rated</option>
+        <option value="1400">1000+ hr, IR, time in type</option>
+      </select>
+    </label>
+    <label class="f">
+      <span>Ferry distance home</span>
+      <select id="ferry">
+        <option value="250">Under 300 nm</option>
+        <option value="650" selected>300–800 nm</option>
+        <option value="1200">Over 800 nm</option>
+      </select>
+    </label>
+    <label class="f">
+      <span>Paying how?</span>
+      <select id="fin">
+        <option value="1">Cash — full price</option>
+        <option value="0.15" selected>Financed — 15% down</option>
+        <option value="0.20">Financed — 20% down</option>
+      </select>
+      <div class="hint">Certified piston loans from ~6.4%.</div>
+    </label>
+    <label class="f">
+      <span>Purchase agreement</span>
+      <select id="legal">
+        <option value="0" selected>AOPA template (free)</option>
+        <option value="900">Aviation attorney</option>
+      </select>
+    </label>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Cash to close</h2>
+  <div class="hero-row">
+    <div class="tile">
+      <div class="lbl">Total at closing</div>
+      <div class="val" id="heroTotal">—</div>
+      <div class="note" id="heroNote"></div>
+    </div>
+    <div class="tile">
+      <div class="lbl">State sales / use tax</div>
+      <div class="val sm" id="heroTax">—</div>
+      <div class="note" id="heroTaxNote"></div>
+    </div>
+    <div class="tile">
+      <div class="lbl">Recurring, per year</div>
+      <div class="val sm" id="heroAnnual">—</div>
+      <div class="note" id="heroAnnualNote"></div>
+    </div>
+    <div class="tile">
+      <div class="lbl">Hold in reserve</div>
+      <div class="val sm">$5k–10k</div>
+      <div class="note">First 90 days: fresh annual, pre-buy squawks, hangar deposit.</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Line by line</h2>
+  <table>
+    <thead><tr><th>Item</th><th class="num">Amount</th></tr></thead>
+    <tbody id="lines"></tbody>
+  </table>
+  <p class="callout" id="finNote"></p>
+</div>
+
+<div class="card">
+  <h2>Cash to close by hangar state — same airplane, same deal</h2>
+  <div class="bars" id="chart"></div>
+  <p class="callout">Bars use your current price, seller type and options — only the state changes. Click any state to switch to it.</p>
+</div>
+
+<div class="card">
+  <h2 id="stName">State detail</h2>
+  <div class="facts" id="facts"></div>
+  <ul class="gotchas" id="gotchas"></ul>
+</div>
+
+<footer>
+  <p><strong>Read this before you rely on it.</strong> State aviation tax rules change and turn on facts specific to your deal — the seller's status, where the plane sleeps, whether you ever put it on leaseback. The numbers here are researched estimates from state revenue departments, state DOT aviation offices, and AOPA's state advocacy pages as of August 2026, not tax advice. Before you close, confirm your basing state's rules with an aviation tax attorney or CPA. A one-hour consult costs less than any of the mistakes on this page.</p>
+  <p>Non-tax figures are market ranges: pre-buy costs from shop surveys, escrow from published title-company fee schedules, avgas at ~$5.70 self-serve / $6.80 full-serve national average, loan terms from current certified-piston lender rate sheets.</p>
+</footer>
+
+</div>
+
+<script>
+const S = [
+  { ab:"AZ", name:"Arizona",
+    priv:p=>[0,0,0], deal:p=>[.056*p,.070*p,.090*p],
+    ann:p=>[25,25,.005*p+5], annNote:"$20 flat classic-aircraft license tax + $5 registration for a 40+ year old Cherokee. A newer airframe pays 0.5% of ADOT book value instead — roughly $430 on an $85k plane.",
+    casual:"yes", fly:"yes", rate:"5.6% state + city use tax",
+    hint:"Casual sale shields you fully.",
+    gotchas:[
+      ["Claim the classic rate.","A.R.S. 28-8339 charges a flat $20/yr for aircraft 40+ years old instead of 0.5% of book value — that's $25/yr vs ~$430/yr on an $85k Cherokee. It must be applied for every year, and most owners never learn it exists."],
+      ["The shield is the seller's status, not yours.","Buy from a dealer, broker, flight school or leasing LLC — in state or out — and you owe 5.6% use tax plus possible city tax. Document that your seller isn't a retailer."],
+      ["Register with ADOT within 60 days.","ADOT reports registrations to the Department of Revenue, which then researches whether tax was paid and mails a questionnaire. Expect to be asked to prove the sale even when it's legitimately exempt."]
+    ]},
+  { ab:"CA", name:"California",
+    priv:p=>[.0725*p,.085*p,.1075*p], deal:p=>[.0725*p,.085*p,.1075*p],
+    ann:p=>[.010*p,.011*p,.0125*p], annNote:"County property tax, assessed annually on market value at the Prop 13 base 1% plus voter-approved debt. Runs forever.",
+    casual:"no", fly:"no", rate:"7.25% + district tax, by hangar location",
+    hint:"No private-party relief. Annual property tax.",
+    gotchas:[
+      ["The casual sale exemption doesn't apply to you.","RTC 6285 reaches only parents, grandparents, children, grandchildren, spouses and revocable trusts. An arm's-length purchase from an unrelated individual triggers full use tax on the buyer, self-reported to CDTFA."],
+      ["Annual property tax is the real cost.","Assessors pull FAA registration data plus airport tie-down lists. Form 577 arrives in February, due April 1 — not filing adds a 10% penalty on top of an estimated assessment. Budget ~1.1% of value every single year."],
+      ["The 12-month presumption catches ferry flights.","Any entry into California within 12 months of purchase presumes California use tax. Rebutting it means flight logs, out-of-state tie-down receipts and maintenance records — kept 8 years."],
+      ["No trade-in credit.","California taxes the gross price, so trading up doesn't reduce the measure the way it does in Florida or Texas."]
+    ]},
+  { ab:"CO", name:"Colorado",
+    priv:p=>[.029*p,.040*p,.088*p], deal:p=>[.029*p,.040*p,.088*p],
+    ann:p=>[0,0,0], annNote:"None. The aviation fuel excise tax stands in lieu of personal property tax on non-commercial aircraft.",
+    casual:"no", fly:"yes", rate:"2.9% state + RTD/CD + home rule city",
+    hint:"Lowest state rate in the country.",
+    gotchas:[
+      ["Pick the hangar before you sign.","Home rule cities self-administer and are invisible to the state. Denver publishes a dedicated aircraft tax guide because it enforces its own ~8.8% — versus 2.9% at an unincorporated-county field twenty minutes away."],
+      ["Nobody will send you a bill.","There's no state aircraft registration to gate you, so the DR 0252 consumer use tax return — due the 20th of the month after purchase — quietly goes unfiled, then surfaces later with interest and penalty."],
+      ["Leaseback breaks the property tax exemption.","The in-lieu treatment rests on the aircraft being non-commercial. Income-producing use can pull it onto the county business personal property roll."]
+    ]},
+  { ab:"FL", name:"Florida",
+    priv:p=>[.06*p,.06*p+75,.06*p+75], deal:p=>[.06*p,.06*p+75,.06*p+75],
+    ann:p=>[0,0,0], annNote:"None for personal use. Florida doesn't register GA aircraft and doesn't tax them as personal property unless they're business assets.",
+    casual:"no", fly:"yes (10 days)", rate:"6% + surtax capped at first $5,000",
+    hint:"No private-party relief, but zero recurring.",
+    gotchas:[
+      ["There is no private-party escape hatch.","The DOR is explicit: all sales of aircraft between individuals are taxable if the sale or delivery happens in Florida. The tax just shifts to you — file Form DR-15AIR by the 20th of the following month or you're a non-filer with a 5+ year lookback."],
+      ["FAA registry address is the audit trigger.","Florida scans FAA data and presumes taxability from a Florida address alone, even for an aircraft never physically used in the state."],
+      ["The 6-month rule needs real out-of-state use.","Buying elsewhere and ferrying home promptly doesn't qualify. You need genuine ownership and use outside Florida for more than six months, with logbooks and tie-down receipts to prove it."],
+      ["A Delaware or Wyoming LLC does not work.","Florida applies substance over form: hangared in Florida means taxed in Florida, whatever the registration says."]
+    ]},
+  { ab:"GA", name:"Georgia",
+    priv:p=>[0,0,0], deal:p=>[.07*p,.08*p,.09*p],
+    ann:p=>[.010*p,.012*p,.0176*p], annNote:"County ad valorem: assessed at 40% of market value against a ~30-mill average rate. Billed by the county where it's hangared.",
+    casual:"yes", fly:"no", rate:"4% state + 3–5% local, no cap",
+    hint:"Casual sale covers use tax too.",
+    gotchas:[
+      ["A broker destroys the exemption.","Georgia's casual sale rule fails if the sale runs through an agent, broker or dealer regularly engaged in selling — or if the seller held the plane for business use, leaseback or a flight school. Buy direct from a genuine individual owner."],
+      ["The recurring bill is the sting.","About $1,000/yr on an $85k airplane, reassessed annually off Aircraft Bluebook. It's billed by the county where the plane is hangared, not where you live — moving it across a county line changes the bill."],
+      ["No fly-away exemption for used aircraft.","Georgia's only removal exemption covers aircraft manufactured or assembled in Georgia and sold by the manufacturer. A dealer purchase in metro Atlanta can run $7,600 in tax."]
+    ]},
+  { ab:"IL", name:"Illinois",
+    priv:p=>[.0625*p,.0625*p,.0625*p], deal:p=>[.0625*p,.075*p,.105*p],
+    ann:p=>[10,15,20], annNote:"Biennial IDOT registration, $20 in the first year of the cycle / $10 in the second. Plus a one-time $20 pilot registration.",
+    casual:"no", fly:"yes (15 days)", rate:"6.25% flat aircraft use tax (RUT-75)",
+    hint:"Private sales taxed by a dedicated statute.",
+    gotchas:[
+      ["Illinois specifically closed the casual sale loophole.","The Aircraft Use Tax is imposed precisely on purchases from someone not in the business of selling aircraft. Form RUT-75, 6.25%, due within 30 days of acquisition or of bringing the plane into Illinois."],
+      ["Tax is on price OR fair market value, whichever is greater.","Buying a $110,000-value Cherokee for $85,000 from a motivated seller does not cap your tax at $85,000. Gifts are taxed at full FMV."],
+      ["Registration is gated on tax compliance.","IDOT won't register the aircraft until you show the RUT-75 payment or a valid no-tax-due determination. You can't defer it."],
+      ["Private-party at least dodges local tax.","The 6.25% RUT-75 rate is state-only — a dealer purchase can stack local Retailers' Occupation Tax up to about 10.5%."]
+    ]},
+  { ab:"MI", name:"Michigan",
+    priv:p=>[.06*p,.06*p,.06*p], deal:p=>[.06*p,.06*p,.06*p],
+    ann:p=>[22,24,26], annNote:"MDOT registration at 1 cent per pound of gross weight — about $24/yr for a Cherokee. In lieu of all property tax.",
+    casual:"no", fly:"unconfirmed", rate:"6% flat, no local tax anywhere",
+    hint:"Simple, flat, no local variation.",
+    gotchas:[
+      ["'No sales tax on a private sale' is true and totally misleading.","The seller isn't a retailer so collects nothing — then 6% use tax lands on you, self-assessed on Form 4281. Treasury runs a dedicated aircraft unit and cross-references the FAA registry."],
+      ["The immediate-family exemption is unusually broad.","Spouse, parent, child, sibling, grandparent and certain in-laws — genuinely valuable and frequently missed when the deal really is intra-family."],
+      ["No trade-in credit on aircraft.","Michigan taxes the full selling price, unlike its treatment of cars."],
+      ["The registration late penalty dwarfs the fee.","$50 plus $5 per month, on a fee of about $24."]
+    ]},
+  { ab:"MN", name:"Minnesota",
+    priv:p=>[.06875*p,.08125*p,.0977*p], deal:p=>[.06875*p,.08125*p,.0977*p],
+    ann:p=>[25,100,100], annNote:"Flat $100/yr registration tax keyed to manufacturer's list price (under $500k = $100). In lieu of property tax. Possibly $25 in reduced categories.",
+    casual:"no", fly:"yes", rate:"6.875% + up to 1.65% local, by hangar",
+    hint:"Aircraft written out of the occasional-sale rule.",
+    gotchas:[
+      ["Minnesota wrote aircraft out of the occasional-sale exemption.","Statute 297A.82 removes it explicitly, and MnDOT won't register the plane until DOR-satisfactory proof of payment or exemption is attached. Buyers who assume private-sale-means-no-tax get caught at the registration counter."],
+      ["Metro hangars cost about $1,200 more.","All seven metro counties carry a mandatory 1.00% package on top of county and city taxes. The rate follows the hangar, not the closing."],
+      ["Don't leave the maintenance exemption on the table.","Parts, upgrade parts and labor for Part 91 aircraft are exempt from sales tax. Your shop won't apply it unless you provide the documentation."],
+      ["The $100 registration is on list price, not what you paid.","It doesn't depreciate and doesn't scale with market value — cheap for a Cherokee either way."]
+    ]},
+  { ab:"NC", name:"North Carolina",
+    priv:p=>[0,0,0], deal:p=>[Math.min(.0475*p,2500),Math.min(.0475*p,2500),Math.min(.0475*p,2500)],
+    ann:p=>[.00225*p,.0058*p,.011*p], annNote:"County property tax at 100% of value; FY25-26 county rates run $0.225 to $0.99 per $100, average $0.58. Add municipal and fire district if inside city limits.",
+    casual:"yes", fly:"no", rate:"4.75%, hard-capped at $2,500 per aircraft",
+    hint:"Cheapest purchase tax in the country.",
+    gotchas:[
+      ["The $2,500 cap is real and it's the best deal going.","4.75% state rate, aircraft exempt from all local and transit tax, and a hard $2,500 ceiling per aircraft. Anything over $52,632 hits the cap. Private-party purchases are exempt outright per the E-555 instructions — covering use tax, not just the seller's collection duty."],
+      ["Personal use does NOT exempt you from property tax.","G.S. 105-275(16) specifically carves aircraft out of the non-business property exclusion. You must list with the county each January at full market value."],
+      ["Counties hunt for unlisted aircraft.","They pull FAA registration data and airport hangar lists; failure to list triggers discovery assessments plus penalties."],
+      ["The antique exemption never applies to a Cherokee.","It caps value at $5,000 but requires model year 1954 or older. The PA-28 started in 1961."]
+    ]},
+  { ab:"NY", name:"New York",
+    priv:p=>[0,0,0], deal:p=>[0,0,0],
+    ann:p=>[0,0,0], annNote:"None. No state registration fee, no aircraft personal property tax.",
+    casual:"n/a", fly:"n/a", rate:"General aviation aircraft fully exempt",
+    hint:"Zero purchase tax, zero recurring.",
+    gotchas:[
+      ["All general aviation aircraft are exempt outright.","Tax Law 1115(a)(21-a), effective September 2015, exempts GA aircraft from both state and local sales AND use tax. Private party or dealer, in state or brought in — $0 either way. On this axis New York is the cheapest state in the country."],
+      ["The exemption covers avionics too.","Machinery and equipment installed on and affixed to the aircraft — radios, nav, lighting, seating — even when installed after purchase. Parts and maintenance labor are also exempt."],
+      ["Part 135 use breaks it.","The exemption is for general aviation. Carrying persons or property for hire recharacterizes the plane as commercial aircraft under different rules."],
+      ["Keep ancillary items separately stated.","Décor, tableware and loose gear sold with the plane stay taxable; sloppy invoicing that lumps them with the airframe can expose the whole invoice."]
+    ]},
+  { ab:"OH", name:"Ohio",
+    priv:p=>[0,0,0], deal:p=>[.065*p,.0725*p,.08*p],
+    ann:p=>[60,60,60], annNote:"$15 per seat per year to ODOT — $60 for a four-seat Cherokee. Value is irrelevant. No personal property tax in Ohio.",
+    casual:"yes", fly:"no", rate:"5.75% state + 0.75–2.25% county",
+    hint:"Casual sale covers use tax too.",
+    gotchas:[
+      ["Aircraft were left out of the casual-sale carve-outs.","Ohio excludes cars, watercraft, snowmobiles and ATVs from the casual sale exemption — but not aircraft. And the use tax mirrors it, so a genuine individual-to-individual sale is exempt from both. Combined with a $60/yr seat fee and no property tax, Ohio is one of the best states to own in."],
+      ["Buying from an out-of-state dealer doesn't help.","Ohio use tax applies at your county's combined rate with no fly-away relief. The exemption is about the nature of the seller, not the location of the closing."],
+      ["Leaseback into an LLC is a known audit trigger.","Ohio has repeatedly denied sale-for-resale treatment for aircraft leased to related parties."],
+      ["No trade-in credit.","Trade at a dealer and Ohio taxes the gross price, not the difference."]
+    ]},
+  { ab:"PA", name:"Pennsylvania",
+    priv:p=>[.06*p,.06*p,.08*p], deal:p=>[.06*p,.06*p,.08*p],
+    ann:p=>[0,0,0], annNote:"None. No state aircraft registration fee, no personal property tax on aircraft.",
+    casual:"no", fly:"no", rate:"6% (7% Allegheny, 8% Philadelphia)",
+    hint:"No relief at purchase, nothing recurring.",
+    gotchas:[
+      ["The famous 2013 'Pennsylvania aircraft exemption' was for parts, not planes.","Act 52 of 2013 exempted aircraft parts, components and maintenance labor. Repeated bills to exempt whole-aircraft sales have never passed. Buyers hear 'PA exempted aircraft' and assume wrong."],
+      ["No casual sale exemption.","A private seller stops collecting, but you owe 6% use tax on Form REV-832, due the last day of the month after purchase. Late filing draws penalty and interest."],
+      ["Helicopters are exempt; fixed-wing isn't.","Rotorcraft transfers after October 2009 escape the tax entirely. A Cherokee does not."],
+      ["Basing matters at the margin.","An Allegheny County or Philadelphia field adds $850–$1,700 to the one-time bill versus the rest of the state."]
+    ]},
+  { ab:"TN", name:"Tennessee",
+    priv:p=>[.07*p+80,.07*p+88,.07*p+88], deal:p=>[.07*p+80,.07*p+88,.07*p+88],
+    ann:p=>[0,0,0], annNote:"None for personal use — 'all other TPP' is deemed to have no value. Business or leaseback use is assessed at 30% and does get billed.",
+    casual:"no", fly:"yes (30 days)", rate:"7% state, local capped at first $1,600",
+    hint:"Highest purchase tax here, zero recurring.",
+    gotchas:[
+      ["Tennessee explicitly taxes private-party sales.","The DOR manual states that each change of ownership results in tax being due, including occasional and isolated sales between non-dealers. There is no escape hatch."],
+      ["Importing the aircraft is itself the taxable event.","Buying in a no-tax state and flying it home does not help. Credit is allowed for tax properly paid elsewhere, but not below Tennessee's number."],
+      ["A '$1 and OVC' bill of sale backfires.","The DOR will disregard it and value the plane off purchase contracts, insurance values or Aircraft Bluebook average retail. Under-documenting the price invites a higher assessment."],
+      ["File the Affidavit of Transfer regardless.","Required on every purchase, sale or import even when you believe no tax is due. Use tax is due by the 20th of the following month."]
+    ]},
+  { ab:"TX", name:"Texas",
+    priv:p=>[0,0,0], deal:p=>[.0625*p,.0825*p,.0825*p],
+    ann:p=>[0,0,0], annNote:"None for personal use. No state registration fee, and personal-use aircraft are exempt from ad valorem tax.",
+    casual:"yes", fly:"yes", rate:"6.25% + up to 2% local",
+    hint:"Occasional sale exemption is fully available.",
+    gotchas:[
+      ["Get Form 01-917 signed at closing.","The occasional sale exemption is worth $5,300–$7,000 here, and the Comptroller has shifted from focusing on substance to focusing on form. A substantively qualifying deal with missing paperwork still gets assessed, and chasing a seller for a signature months later usually fails."],
+      ["The exemption depends on the seller, not you.","It fails if the seller is a dealer, a broker taking title, or an entity that leased or rented the plane. A leaseback to a flight school or club is the classic trap — vet the seller's history before closing."],
+      ["The seller can only have sold one or two taxable items in 12 months.","Tax Code 151.304. A seller liquidating a hangar full of equipment can blow the exemption for you."],
+      ["Personal-use property tax exemption is fragile.","Leaseback income, charter, or depreciating the plane on a business return can put it on the county appraisal roll, with an April 15 rendition deadline and penalties for failing to render."]
+    ]},
+  { ab:"WA", name:"Washington",
+    priv:p=>[.070*p,.088*p,.106*p], deal:p=>[.070*p,.088*p,.106*p],
+    ann:p=>[65,150,150], annNote:"$65 in 2026 ($50 excise + $15 registration), rising to $150 on Jan 1 2027, then +2% a year. In lieu of property tax.",
+    casual:"partial", fly:"no", rate:"6.5% + 0.5–3.1% local, by hangar",
+    hint:"Casual sale exempt, but use tax on FMV.",
+    gotchas:[
+      ["The casual sale exemption is a trap here.","It genuinely exempts the private seller from collecting — so the deal feels tax-free — but use tax lands on you anyway, measured on FAIR MARKET VALUE, not your bill of sale. Buy an $85,000 airplane for $70,000 and you can still be taxed on $85,000."],
+      ["Montana LLC structures are materially riskier in Washington.","RCW 82.48.020 makes registering out of state to avoid the excise tax a gross misdemeanor on top of continuing liability, and the DOR has issued a final tax-avoidance rule aimed squarely at these structures."],
+      ["Budget the 2027 recurring number, not the 2026 one.","The single-engine annual bill goes from $65 to $150 on January 1, 2027, then inflates 2% every year."],
+      ["Ignore anything you read about the 10% aircraft luxury tax.","It was repealed March 31, 2026 — one day before it would have taken effect — and never applied. It wouldn't have touched an $85k plane anyway."]
+    ]}
+];
+
+const $ = id => document.getElementById(id);
+const fmt = n => "$" + Math.round(n).toLocaleString();
+const fmtK = n => n >= 1000 ? "$" + (Math.round(n/100)/10).toFixed(1).replace(/\.0$/,"") + "k" : "$" + Math.round(n);
+
+// populate state select
+S.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(s => {
+  const o = document.createElement("option");
+  o.value = s.ab; o.textContent = s.name;
+  $("state").appendChild(o);
+});
+$("state").value = "TX";
+
+function taxFor(s, price, seller) {
+  const t = seller === "private" ? s.priv(price) : s.deal(price);
+  return { low: t[0], typ: t[1], high: t[2] };
+}
+
+function calc(s) {
+  const price = +$("price").value || 0;
+  const seller = $("seller").value;
+  const finRate = +$("fin").value;
+  const cash = finRate === 1;
+  const tax = taxFor(s, price, seller);
+
+  const dueDiligence = +$("prebuy").value;
+  const records = 160;
+  const escrow = 305;
+  const travel = 700;
+  const legal = +$("legal").value;
+  const insurance = +$("ins").value;
+  const ferry = +$("ferry").value;
+  const checkout = 400;
+  const loanFee = cash ? 0 : 400;
+  const down = cash ? price : price * finRate;
+
+  const total = down + tax.typ + dueDiligence + records + escrow + travel + legal + insurance + ferry + checkout + loanFee;
+  return { price, seller, cash, finRate, tax, dueDiligence, records, escrow, travel, legal, insurance, ferry, checkout, loanFee, down, total };
+}
+
+function render() {
+  const s = S.find(x => x.ab === $("state").value);
+  const c = calc(s);
+  const price = c.price;
+
+  // hero
+  $("heroTotal").textContent = fmt(c.total);
+  $("heroNote").textContent = c.cash
+    ? "Cash purchase. Full price plus every cost of getting it home."
+    : Math.round(c.finRate*100) + "% down on " + fmt(price) + ", plus all closing and delivery costs.";
+
+  $("heroTax").textContent = c.tax.typ === 0 ? "$0" : fmt(c.tax.typ);
+  $("heroTaxNote").textContent = c.tax.typ === 0
+    ? (s.ab === "NY" ? "General aviation aircraft are exempt outright." : "Exempt as a casual sale — verify the seller isn't a dealer.")
+    : (c.tax.low !== c.tax.high ? "Range " + fmt(c.tax.low) + "–" + fmt(c.tax.high) + " depending on hangar location." : s.rate);
+
+  const a = s.ann(price);
+  $("heroAnnual").textContent = a[1] === 0 ? "$0" : fmt(a[1]);
+  $("heroAnnualNote").textContent = s.annNote;
+
+  // lines
+  const rows = [
+    [c.cash ? "Purchase price" : "Down payment (" + Math.round(c.finRate*100) + "%)", c.down,
+      c.cash ? "Paid in full at closing." : "Financed balance " + fmt(price - c.down) + " at roughly 6.4–8% over 15–20 years."],
+    ["State sales / use tax — " + s.name, c.tax.typ, s.rate + (c.tax.typ === 0 ? " · exempt on this deal" : "")],
+    ["Pre-buy inspection", c.dueDiligence, $("prebuy").selectedOptions[0].textContent + ". Non-refundable if you walk."],
+    ["Title search + damage history", c.records, "FAA records search and accident history report."],
+    ["Escrow, closing, FAA filing", c.escrow, "Your half of a ~$500 escrow fee plus registration and bill-of-sale recording."],
+    ["Travel to inspect and oversee", c.travel, "Getting yourself to the airplane, twice."],
+    ["Purchase agreement", c.legal, c.legal === 0 ? "AOPA member template, no cost." : "Aviation attorney drafts and reviews."],
+    ["Insurance, first year", c.insurance, $("ins").selectedOptions[0].textContent + ". Get the quote before you sign."],
+    ["CFI checkout in type", c.checkout, "Many insurers require dual before they'll cover you solo."],
+    ["Self-ferry home", c.ferry, "Fuel at ~9 gph and ~$5.70–6.80/gal, plus a night on the road."],
+    ["Loan origination", c.loanFee, c.cash ? "Not applicable — paying cash." : "Lender document and origination fee."]
+  ];
+
+  $("lines").innerHTML = rows.map(([k, v, d]) =>
+    `<tr class="${v === 0 ? 'zero' : ''}"><td>${k}<span class="desc">${d}</span></td><td class="num">${fmt(v)}</td></tr>`
+  ).join("") + `<tr class="total"><td>Cash to close</td><td class="num">${fmt(c.total)}</td></tr>`;
+
+  $("finNote").innerHTML = c.cash
+    ? "<strong>Then hold $5,000–10,000 back.</strong> A Cherokee in this price band is a 1970s airframe. Something surfaces in the first ninety days — a fresh annual runs $2,000–4,000, and the squawks your pre-buy found run another $2,000–5,000."
+    : "<strong>Then hold $5,000–10,000 back.</strong> Financing frees up cash at closing but doesn't change what the airplane needs. Budget the fresh annual and the pre-buy squawk list the same way a cash buyer would.";
+
+  // chart
+  const rowsChart = S.map(st => {
+    const t = taxFor(st, price, c.seller).typ;
+    const base = c.total - c.tax.typ;
+    return { ab: st.ab, name: st.name, v: base + t, tax: t, ann: st.ann(price)[1] };
+  }).sort((x, y) => x.v - y.v || x.ann - y.ann);
+  const max = Math.max(...rowsChart.map(r => r.v));
+  $("chart").innerHTML = rowsChart.map(r =>
+    `<div class="bar-row ${r.ab === s.ab ? 'sel' : ''}" data-ab="${r.ab}" title="${r.name}: ${fmt(r.v)} to close, ${fmt(r.ann)}/yr after">
+       <div class="st">${r.ab}</div>
+       <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2, (r.v/max)*100)}%"></div></div>
+       <div class="bar-val">${fmt(r.v)}<span class="bar-sub">${r.tax === 0 ? "no tax" : fmt(r.tax) + " tax"} · ${r.ann === 0 ? "$0/yr" : fmt(r.ann) + "/yr"}</span></div>
+     </div>`).join("");
+  document.querySelectorAll(".bar-row").forEach(el =>
+    el.addEventListener("click", () => { $("state").value = el.dataset.ab; render(); }));
+
+  // detail
+  $("stName").textContent = s.name;
+  $("stateHint").textContent = s.hint;
+  const pill = (val) => {
+    const m = { yes: ["y","Yes"], no: ["n","No"], partial: ["p","Partial"], "n/a": ["p","N/A"], unconfirmed: ["p","Unconfirmed"] };
+    const k = (m[val] || ["p", val]);
+    return `<span class="pill ${k[0]}">${k[1]}</span>`;
+  };
+  $("facts").innerHTML = `
+    <div class="fact"><div class="k">Rate structure</div><div class="v" style="font-size:14px">${s.rate}</div></div>
+    <div class="fact"><div class="k">Casual sale relief</div><div class="v">${pill(s.casual)}</div></div>
+    <div class="fact"><div class="k">Fly-away exemption</div><div class="v">${pill(s.fly)}</div></div>
+    <div class="fact"><div class="k">Tax on this deal</div><div class="v">${c.tax.typ === 0 ? "$0" : fmt(c.tax.typ)}</div></div>
+    <div class="fact"><div class="k">Recurring per year</div><div class="v">${a[1] === 0 ? "$0" : fmt(a[1])}</div></div>`;
+  $("gotchas").innerHTML = s.gotchas.map(([h, b]) => `<li><strong>${h}</strong> ${b}</li>`).join("");
+}
+
+// wire up
+["price","state","seller","prebuy","ins","ferry","fin","legal"].forEach(id =>
+  $(id).addEventListener("input", render));
+$("priceR").addEventListener("input", e => { $("price").value = e.target.value; render(); });
+$("price").addEventListener("input", e => { $("priceR").value = e.target.value; });
+
+$("themeBtn").addEventListener("click", () => {
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  document.documentElement.setAttribute("data-theme", dark ? "light" : "dark");
+  $("themeBtn").textContent = dark ? "Dark" : "Light";
+});
+
+render();
+</script>
+</body>
+</html>
